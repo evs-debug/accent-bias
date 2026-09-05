@@ -16,6 +16,40 @@ interface Sample {
   wer: number
 }
 
+interface MitigationExample {
+  accent_group: string
+  reference: string
+  before_transcript: string
+  after_transcript: string
+  before_wer: number
+  after_wer: number
+}
+
+interface MitigationSummary {
+  total_samples: number
+  samples_improved: number
+  avg_wer_before: number
+  avg_wer_after: number
+  top_examples: MitigationExample[]
+}
+
+interface MitigationExample {
+  accent_group: string
+  reference: string
+  before_transcript: string
+  after_transcript: string
+  before_wer: number
+  after_wer: number
+}
+
+interface MitigationSummary {
+  total_samples: number
+  samples_improved: number
+  avg_wer_before: number
+  avg_wer_after: number
+  top_examples: MitigationExample[]
+}
+
 const API_BASE = 'http://localhost:8000'
 
 function App() {
@@ -26,6 +60,9 @@ function App() {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
   const [samples, setSamples] = useState<Sample[]>([])
   const [samplesLoading, setSamplesLoading] = useState(false)
+
+  const [mitigation, setMitigation] = useState<MitigationSummary | null>(null)
+  const [mitigationLoading, setMitigationLoading] = useState(true)
 
   useEffect(() => {
     fetch(`${API_BASE}/results/by-accent`)
@@ -43,6 +80,26 @@ function App() {
         setError(err.message)
         setLoading(false)
       })
+  }, [])
+
+  useEffect(() => {
+    fetch(`${API_BASE}/mitigation/summary`)
+      .then((res) => res.json())
+      .then((json: MitigationSummary) => {
+        setMitigation(json)
+        setMitigationLoading(false)
+      })
+      .catch(() => setMitigationLoading(false))
+  }, [])
+
+  useEffect(() => {
+    fetch(`${API_BASE}/mitigation/summary`)
+      .then((res) => res.json())
+      .then((json: MitigationSummary) => {
+        setMitigation(json)
+        setMitigationLoading(false)
+      })
+      .catch(() => setMitigationLoading(false))
   }, [])
 
   const handleSelectGroup = (group: string) => {
@@ -168,6 +225,50 @@ function App() {
               ))}
             </div>
           )}
+
+          <div className="mitigation-section">
+            <div className="section-label">From detection to correction</div>
+            <p className="mitigation-intro">
+              Detecting the gap is the first step. As a proof of concept, we applied a
+              domain-vocabulary correction pass to catch words the model likely garbled —
+              regional names, cultural terms, and technical vocabulary the model has seen
+              less of.
+            </p>
+
+            {mitigationLoading && <p className="status-text">Running correction pass...</p>}
+
+            {!mitigationLoading && mitigation && (
+              <>
+                <div className="finding-block">
+                  <div className="finding-number">
+                    {(mitigation.avg_wer_before * 100).toFixed(1)}% → {(mitigation.avg_wer_after * 100).toFixed(1)}%
+                  </div>
+                  <div className="finding-label">
+                    average WER before and after correction, across all {mitigation.total_samples} samples
+                    ({mitigation.samples_improved} samples improved)
+                  </div>
+                </div>
+
+                <div className="section-label">Example corrections</div>
+                {mitigation.top_examples.map((ex, i) => (
+                  <div key={i} className="sample-card">
+                    <div className="sample-wer" style={{ color: '#4A9B6E' }}>
+                      {ex.accent_group}: {(ex.before_wer * 100).toFixed(0)}% → {(ex.after_wer * 100).toFixed(0)}% WER
+                    </div>
+                    <div className="sample-text">
+                      <span className="sample-label">Reference:</span> {ex.reference}
+                    </div>
+                    <div className="sample-text">
+                      <span className="sample-label">Before:</span> {ex.before_transcript}
+                    </div>
+                    <div className="sample-text">
+                      <span className="sample-label">After:</span> {ex.after_transcript}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
         </>
       )}
     </div>

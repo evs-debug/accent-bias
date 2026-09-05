@@ -146,3 +146,31 @@ body {
   color: #8A8F98;
   font-weight: 500;
 }
+
+.mitigation-section {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #2A2E36;
+}
+
+.mitigation-intro {
+  color: #B4B8BF;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 58ch;
+  margin-bottom: 1.5rem;
+}
+
+.mitigation-section {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #2A2E36;
+}
+
+.mitigation-intro {
+  color: #B4B8BF;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 58ch;
+  margin-bottom: 1.5rem;
+}

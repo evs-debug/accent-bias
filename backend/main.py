@@ -130,3 +130,68 @@ async def get_samples_for_accent(accent_group: str, db: Session = Depends(get_db
         }
         for r in results
     ]
+
+from rapidfuzz import process, fuzz
+import re as re_module
+
+def build_vocab(db: Session):
+    rows = db.query(TranscriptionResult.reference_text).all()
+    vocab = set()
+    for (ref,) in rows:
+        words = re_module.findall(r"[a-zA-Z']+", ref.lower())
+        vocab.update(words)
+    return list(vocab)
+
+def correct_transcript(transcript, vocab, threshold=80):
+    words = transcript.split()
+    corrected = []
+    for word in words:
+        clean_word = re_module.sub(r"[^a-zA-Z']", "", word.lower())
+        if not clean_word:
+            corrected.append(word)
+            continue
+        match = process.extractOne(clean_word, vocab, scorer=fuzz.ratio)
+        if match and match[1] >= threshold and match[0] != clean_word:
+            corrected.append(match[0])
+        else:
+            corrected.append(word)
+    return " ".join(corrected)
+
+@app.get("/mitigation/summary")
+async def mitigation_summary(db: Session = Depends(get_db)):
+    rows = db.query(TranscriptionResult).all()
+    vocab = build_vocab(db)
+
+    improvements = []
+    total_before = 0
+    total_after = 0
+
+    for r in rows:
+        corrected = correct_transcript(r.transcript, vocab)
+        new_wer = wer(
+            r.reference_text, corrected,
+            reference_transform=normalize,
+            hypothesis_transform=normalize
+        )
+        total_before += r.wer
+        total_after += new_wer
+
+        if new_wer < r.wer:
+            improvements.append({
+                "accent_group": r.accent_group,
+                "reference": r.reference_text,
+                "before_transcript": r.transcript,
+                "after_transcript": corrected,
+                "before_wer": round(r.wer, 4),
+                "after_wer": round(new_wer, 4)
+            })
+
+    improvements.sort(key=lambda x: x["before_wer"] - x["after_wer"], reverse=True)
+
+    return {
+        "total_samples": len(rows),
+        "samples_improved": len(improvements),
+        "avg_wer_before": round(total_before / len(rows), 4),
+        "avg_wer_after": round(total_after / len(rows), 4),
+        "top_examples": improvements[:5]
+    }
