@@ -2,7 +2,15 @@ from fastapi import FastAPI, UploadFile, File, Form, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sarvamai import SarvamAI
-from jiwer import wer
+from jiwer import wer, Compose, ToLowerCase, RemovePunctuation, RemoveMultipleSpaces, Strip, ReduceToListOfListOfWords
+
+normalize = Compose([
+    ToLowerCase(),
+    RemovePunctuation(),
+    RemoveMultipleSpaces(),
+    Strip(),
+    ReduceToListOfListOfWords()
+])
 import os
 import shutil
 from dotenv import load_dotenv
@@ -13,6 +21,16 @@ load_dotenv()
 init_db()
 
 app = FastAPI()
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 client = SarvamAI(api_subscription_key=os.getenv('SARVAM_API_KEY'))
 
 @app.post("/transcribe")
@@ -35,7 +53,11 @@ async def transcribe_and_score(
     os.remove(temp_path)
 
     hypothesis = response.transcript
-    error_rate = wer(reference_text, hypothesis)
+    error_rate = wer(
+        reference_text, hypothesis,
+        reference_transform=normalize,
+        hypothesis_transform=normalize
+    )
 
     result = TranscriptionResult(
         filename=file.filename,
@@ -87,5 +109,24 @@ async def get_wer_by_accent(db: Session = Depends(get_db)):
     )
     return [
         {"accent_group": r.accent_group, "avg_wer": round(r.avg_wer, 4), "sample_count": r.sample_count}
+        for r in results
+    ]
+
+@app.get("/results/by-accent/{accent_group}")
+async def get_samples_for_accent(accent_group: str, db: Session = Depends(get_db)):
+    results = (
+        db.query(TranscriptionResult)
+        .filter(TranscriptionResult.accent_group == accent_group)
+        .order_by(TranscriptionResult.wer.desc())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "filename": r.filename,
+            "reference_text": r.reference_text,
+            "transcript": r.transcript,
+            "wer": round(r.wer, 4)
+        }
         for r in results
     ]
