@@ -105,3 +105,44 @@ body {
 .status-error {
   color: #D96C5F;
 }
+
+.row-clickable {
+  cursor: pointer;
+}
+
+.row-selected {
+  background: #1F2833;
+  cursor: pointer;
+}
+
+.drilldown {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #2A2E36;
+}
+
+.sample-card {
+  background: #1A1D23;
+  border: 1px solid #2A2E36;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.sample-wer {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.sample-text {
+  font-size: 0.9rem;
+  color: #B4B8BF;
+  line-height: 1.5;
+  margin-bottom: 0.25rem;
+}
+
+.sample-label {
+  color: #8A8F98;
+  font-weight: 500;
+}

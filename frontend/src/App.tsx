@@ -8,12 +8,24 @@ interface AccentResult {
   sample_count: number
 }
 
+interface Sample {
+  id: number
+  filename: string
+  reference_text: string
+  transcript: string
+  wer: number
+}
+
 const API_BASE = 'http://localhost:8000'
 
 function App() {
   const [data, setData] = useState<AccentResult[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
+  const [samples, setSamples] = useState<Sample[]>([])
+  const [samplesLoading, setSamplesLoading] = useState(false)
 
   useEffect(() => {
     fetch(`${API_BASE}/results/by-accent`)
@@ -33,6 +45,23 @@ function App() {
       })
   }, [])
 
+  const handleSelectGroup = (group: string) => {
+    if (selectedGroup === group) {
+      setSelectedGroup(null)
+      setSamples([])
+      return
+    }
+    setSelectedGroup(group)
+    setSamplesLoading(true)
+    fetch(`${API_BASE}/results/by-accent/${group}`)
+      .then((res) => res.json())
+      .then((json: Sample[]) => {
+        setSamples(json)
+        setSamplesLoading(false)
+      })
+      .catch(() => setSamplesLoading(false))
+  }
+
   const getBarColor = (wer: number) => {
     if (wer < 0.05) return '#4A9B6E'
     if (wer < 0.10) return '#E8A33D'
@@ -49,7 +78,7 @@ function App() {
       <h1 className="headline">Not every accent gets heard the same way.</h1>
       <p className="subhead">
         We benchmarked Sarvam's speech-to-text model against real Indian-English speakers
-        across six language backgrounds, using the Svarah dataset (AI4Bharat). Word Error Rate
+        across ten language backgrounds, using the Svarah dataset (AI4Bharat). Word Error Rate
         measures how much of what was said actually made it into the transcript correctly.
       </p>
 
@@ -82,7 +111,10 @@ function App() {
                   formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, 'WER']}
                   contentStyle={{ background: '#1D2128', border: '1px solid #2A2E36', borderRadius: '6px', color: '#EDEAE3' }}
                 />
-                <Bar dataKey="avg_wer" radius={[4, 4, 0, 0]}>
+                <Bar
+                  dataKey="avg_wer"
+                  radius={[4, 4, 0, 0]}
+                >
                   {data.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={getBarColor(entry.avg_wer)} />
                   ))}
@@ -91,7 +123,7 @@ function App() {
             </ResponsiveContainer>
           </div>
 
-          <div className="section-label">Full results</div>
+          <div className="section-label">Full results — click a row to see individual samples</div>
           <table className="data-table">
             <thead>
               <tr>
@@ -102,7 +134,11 @@ function App() {
             </thead>
             <tbody>
               {data.map((row) => (
-                <tr key={row.accent_group}>
+                <tr
+                  key={row.accent_group}
+                  onClick={() => handleSelectGroup(row.accent_group)}
+                  className={selectedGroup === row.accent_group ? 'row-selected' : 'row-clickable'}
+                >
                   <td>{row.accent_group}</td>
                   <td>{(row.avg_wer * 100).toFixed(1)}%</td>
                   <td>{row.sample_count}</td>
@@ -110,6 +146,28 @@ function App() {
               ))}
             </tbody>
           </table>
+
+          {selectedGroup && (
+            <div className="drilldown">
+              <div className="section-label">
+                {selectedGroup} — individual samples (worst first)
+              </div>
+              {samplesLoading && <p className="status-text">Loading samples...</p>}
+              {!samplesLoading && samples.map((s) => (
+                <div key={s.id} className="sample-card">
+                  <div className="sample-wer" style={{ color: getBarColor(s.wer) }}>
+                    {(s.wer * 100).toFixed(0)}% WER
+                  </div>
+                  <div className="sample-text">
+                    <span className="sample-label">Reference:</span> {s.reference_text}
+                  </div>
+                  <div className="sample-text">
+                    <span className="sample-label">Transcript:</span> {s.transcript}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
