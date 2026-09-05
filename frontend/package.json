@@ -12,6 +12,8 @@
   "dependencies": {
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-is": "^19.2.8",
+    "react-svgmap-india": "^2.1.0",
     "recharts": "^3.10.1"
   },
   "devDependencies": {

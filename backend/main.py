@@ -162,6 +162,23 @@ def correct_transcript(transcript, vocab, threshold=80):
             corrected.append(word)
     return " ".join(corrected)
 
+@app.get("/results/by-state")
+async def get_wer_by_state(db: Session = Depends(get_db)):
+    results = (
+        db.query(
+            TranscriptionResult.native_state,
+            func.avg(TranscriptionResult.wer).label("avg_wer"),
+            func.count(TranscriptionResult.id).label("sample_count")
+        )
+        .filter(TranscriptionResult.native_state.isnot(None))
+        .group_by(TranscriptionResult.native_state)
+        .all()
+    )
+    return [
+        {"state": r.native_state, "avg_wer": round(r.avg_wer, 4), "sample_count": r.sample_count}
+        for r in results
+    ]
+
 @app.get("/mitigation/summary")
 async def mitigation_summary(db: Session = Depends(get_db)):
     rows = db.query(TranscriptionResult).filter(TranscriptionResult.accent_group.in_(BENCHMARK_LANGUAGES)).all()

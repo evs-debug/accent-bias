@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import IndiaMapSection from './IndiaMapSection'
 import './App.css'
 
 interface AccentResult {
@@ -364,6 +365,8 @@ function App() {
               </>
             )}
           </div>
+
+          <IndiaMapSection />
 
           <div className="test-section">
             <div className="section-label">Try it yourself</div>

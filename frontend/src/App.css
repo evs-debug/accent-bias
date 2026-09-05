@@ -297,3 +297,25 @@ body {
     flex-direction: column;
   }
 }
+
+.map-section {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #2A2E36;
+}
+
+.map-layout {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  margin-top: 1.5rem;
+}
+
+.map-container {
+  flex-shrink: 0;
+}
+
+.map-details {
+  flex: 1;
+  padding-top: 1rem;
+}
