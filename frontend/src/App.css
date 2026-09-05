@@ -319,3 +319,67 @@ body {
   flex: 1;
   padding-top: 1rem;
 }
+
+.routing-demo {
+  margin-top: 1rem;
+}
+
+.routing-bubble {
+  background: #1A1D23;
+  border: 1px solid #2A2E36;
+  border-radius: 10px;
+  padding: 1.25rem;
+  max-width: 480px;
+}
+
+.routing-question {
+  color: #B4B8BF;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.routing-suggestion {
+  color: #E8A33D;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.routing-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.routing-btn {
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+
+.routing-btn.confirm {
+  background: #4A9B6E;
+  color: #15181D;
+}
+
+.routing-btn.reject {
+  background: #2A2E36;
+  color: #EDEAE3;
+}
+
+.routing-resolved {
+  color: #B4B8BF;
+  font-size: 0.9rem;
+}
+
+.comparison-note {
+  background: #1A1D23;
+  border-left: 3px solid #E8A33D;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #B4B8BF;
+  line-height: 1.5;
+}

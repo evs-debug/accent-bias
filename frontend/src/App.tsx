@@ -102,6 +102,7 @@ function App() {
   const [wordSuggestions, setWordSuggestions] = useState<WordSuggestion[]>([])
   const [acceptedFixes, setAcceptedFixes] = useState<Record<number, boolean>>({})
   const [liveWer, setLiveWer] = useState<number | null>(null)
+  const [routingChoice, setRoutingChoice] = useState<'accepted' | 'rerecord' | null>(null)
 
   useEffect(() => {
     fetch(`${API_BASE}/results/by-accent`)
@@ -467,6 +468,27 @@ function App() {
 
               {testResult && (
                 <div className="test-result">
+                  {(() => {
+                    const matched = data.find(
+                      (d) => d.accent_group.toLowerCase() === testAccentGroup.trim().toLowerCase()
+                    )
+                    if (!matched) return null
+                    const currentWer = liveWer !== null ? liveWer : testResult.wer
+                    const diff = currentWer - matched.avg_wer
+                    return (
+                      <div className="comparison-note">
+                        Your result: <strong>{(currentWer * 100).toFixed(1)}%</strong> WER —{' '}
+                        {matched.accent_group} speakers in our benchmark averaged{' '}
+                        <strong>{(matched.avg_wer * 100).toFixed(1)}%</strong>.{' '}
+                        {diff > 0.02
+                          ? `You scored worse than average for this group.`
+                          : diff < -0.02
+                          ? `You scored better than average for this group.`
+                          : `You're right around the average for this group.`}
+                      </div>
+                    )
+                  })()}
+
                   <div className="sample-wer" style={{ color: liveWer !== null ? getBarColor(liveWer) : getBarColor(testResult.wer) }}>
                     {liveWer !== null ? (liveWer * 100).toFixed(1) : (testResult.wer * 100).toFixed(1)}% WER
                   </div>
@@ -495,6 +517,52 @@ function App() {
                       )
                     })}
                   </div>
+                </div>
+              )}
+
+              {testResult && liveWer !== null && liveWer > 0.10 && (
+                <div className="routing-demo">
+                  <div className="section-label" style={{ marginTop: '2rem' }}>
+                    What a real product would do
+                  </div>
+                  <p className="mitigation-intro">
+                    This result fell below our confidence threshold. Instead of silently
+                    serving a possibly-wrong transcript, a production system could route it
+                    back for confirmation, like this:
+                  </p>
+
+                  {routingChoice === null && (
+                    <div className="routing-bubble">
+                      <div className="routing-question">
+                        We're not fully confident we heard that right. Did you mean:
+                      </div>
+                      <div className="routing-suggestion">
+                        "{wordSuggestions.map((w, i) => (acceptedFixes[i] && w.suggestion ? w.suggestion : w.word)).join(' ')}"
+                      </div>
+                      <div className="routing-actions">
+                        <button className="routing-btn confirm" onClick={() => setRoutingChoice('accepted')}>
+                          Yes, that's right
+                        </button>
+                        <button className="routing-btn reject" onClick={() => setRoutingChoice('rerecord')}>
+                          No, let me try again
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {routingChoice === 'accepted' && (
+                    <div className="routing-bubble routing-resolved">
+                      Confirmed. The corrected transcript is saved, and this signal helps
+                      flag which words this accent group's speakers get mistranscribed most.
+                    </div>
+                  )}
+
+                  {routingChoice === 'rerecord' && (
+                    <div className="routing-bubble routing-resolved">
+                      No problem — instead of silently keeping a wrong transcript, the
+                      system asks you to re-record rather than guessing.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
