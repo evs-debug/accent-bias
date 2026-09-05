@@ -162,6 +162,63 @@ def correct_transcript(transcript, vocab, threshold=80):
             corrected.append(word)
     return " ".join(corrected)
 
+from pydantic import BaseModel
+
+class WerRequest(BaseModel):
+    reference_text: str
+    hypothesis_text: str
+
+class SuggestRequest(BaseModel):
+    reference_text: str
+    transcript: str
+
+@app.post("/compute-wer")
+async def compute_wer(req: WerRequest):
+    score = wer(
+        req.reference_text, req.hypothesis_text,
+        reference_transform=normalize,
+        hypothesis_transform=normalize
+    )
+    return {"wer": round(score, 4)}
+
+@app.post("/suggest-corrections")
+async def suggest_corrections(req: SuggestRequest, db: Session = Depends(get_db)):
+    vocab = build_vocab(db)
+    import re as re_mod
+    live_ref_words = re_mod.findall(r"[a-zA-Z']+", req.reference_text.lower())
+    vocab = list(set(vocab) | set(live_ref_words))
+    words = req.transcript.split()
+    ref_words_normalized = set(
+        w.lower().strip(".,!?;:") for w in req.reference_text.split()
+    )
+
+    from num2words import num2words
+
+    suggestions = []
+    for word in words:
+        clean_word = word.lower().strip(".,!?;:'\"")
+        is_wrong = clean_word not in ref_words_normalized
+        suggestion = None
+        if is_wrong and clean_word:
+            if clean_word.isdigit():
+                try:
+                    word_form = num2words(int(clean_word))
+                    if word_form in ref_words_normalized:
+                        suggestion = word_form
+                except (ValueError, OverflowError):
+                    pass
+            if suggestion is None:
+                match = process.extractOne(clean_word, vocab, scorer=fuzz.ratio)
+                if match and match[1] >= 70 and match[0] != clean_word:
+                    suggestion = match[0]
+        suggestions.append({
+            "word": word,
+            "is_wrong": is_wrong,
+            "suggestion": suggestion
+        })
+
+    return {"words": suggestions}
+
 @app.get("/results/by-state")
 async def get_wer_by_state(db: Session = Depends(get_db)):
     results = (

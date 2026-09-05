@@ -94,6 +94,15 @@ function App() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([])
 
+  interface WordSuggestion {
+    word: string
+    is_wrong: boolean
+    suggestion: string | null
+  }
+  const [wordSuggestions, setWordSuggestions] = useState<WordSuggestion[]>([])
+  const [acceptedFixes, setAcceptedFixes] = useState<Record<number, boolean>>({})
+  const [liveWer, setLiveWer] = useState<number | null>(null)
+
   useEffect(() => {
     fetch(`${API_BASE}/results/by-accent`)
       .then((res) => {
@@ -204,10 +213,43 @@ function App() {
       if (!res.ok) throw new Error('Transcription failed. Try a different audio file.')
       const json = await res.json()
       setTestResult({ transcript: json.transcript, wer: json.wer })
+      setLiveWer(json.wer)
+      setAcceptedFixes({})
+
+      const suggestRes = await fetch(`${API_BASE}/suggest-corrections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference_text: testReference, transcript: json.transcript })
+      })
+      const suggestJson = await suggestRes.json()
+      setWordSuggestions(suggestJson.words)
     } catch (err) {
       setTestError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
       setTestLoading(false)
+    }
+  }
+
+  const toggleFix = async (index: number) => {
+    const newAccepted = { ...acceptedFixes, [index]: !acceptedFixes[index] }
+    setAcceptedFixes(newAccepted)
+
+    const editedWords = wordSuggestions.map((w, i) => {
+      if (newAccepted[i] && w.suggestion) return w.suggestion
+      return w.word
+    })
+    const editedTranscript = editedWords.join(' ')
+
+    try {
+      const res = await fetch(`${API_BASE}/compute-wer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference_text: testReference, hypothesis_text: editedTranscript })
+      })
+      const json = await res.json()
+      setLiveWer(json.wer)
+    } catch {
+      // silently ignore, keep previous score
     }
   }
 
@@ -425,19 +467,33 @@ function App() {
 
               {testResult && (
                 <div className="test-result">
-                  <div className="sample-wer" style={{ color: getBarColor(testResult.wer) }}>
-                    {(testResult.wer * 100).toFixed(1)}% WER
+                  <div className="sample-wer" style={{ color: liveWer !== null ? getBarColor(liveWer) : getBarColor(testResult.wer) }}>
+                    {liveWer !== null ? (liveWer * 100).toFixed(1) : (testResult.wer * 100).toFixed(1)}% WER
                   </div>
+                  <p className="mitigation-intro" style={{ marginBottom: '0.75rem' }}>
+                    Click a red word to try our suggested correction.
+                  </p>
                   <div className="sample-text">
                     <span className="sample-label">Transcript:</span>{' '}
-                    {diffWords(testReference, testResult.transcript).map((w, i) => (
-                      <span
-                        key={i}
-                        style={{ color: w.isCorrect ? '#EDEAE3' : '#D96C5F', fontWeight: w.isCorrect ? 400 : 600 }}
-                      >
-                        {w.word}{' '}
-                      </span>
-                    ))}
+                    {wordSuggestions.map((w, i) => {
+                      const isFixed = acceptedFixes[i]
+                      const displayWord = isFixed && w.suggestion ? w.suggestion : w.word
+                      const clickable = w.is_wrong && w.suggestion
+                      return (
+                        <span
+                          key={i}
+                          onClick={() => clickable && toggleFix(i)}
+                          style={{
+                            color: isFixed ? '#4A9B6E' : w.is_wrong ? '#D96C5F' : '#EDEAE3',
+                            fontWeight: w.is_wrong || isFixed ? 600 : 400,
+                            cursor: clickable ? 'pointer' : 'default',
+                            textDecoration: clickable ? 'underline dotted' : 'none'
+                          }}
+                        >
+                          {displayWord}{' '}
+                        </span>
+                      )
+                    })}
                   </div>
                 </div>
               )}
