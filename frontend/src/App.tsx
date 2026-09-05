@@ -264,8 +264,22 @@ function App() {
     ? (data[data.length - 1].avg_wer / data[0].avg_wer).toFixed(1)
     : null
 
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="page">
+      <nav className="sticky-nav">
+        <span className="nav-brand">Accent Bias Auditor</span>
+        <div className="nav-links">
+          <button onClick={() => scrollTo('overview')}>Overview</button>
+          <button onClick={() => scrollTo('benchmark')}>Benchmark</button>
+          <button onClick={() => scrollTo('map')}>Map</button>
+          <button onClick={() => scrollTo('try-it')}>Try it</button>
+        </div>
+      </nav>
+
       <div className="eyebrow-line">Sarvam AI Challenge — Accent Bias Auditor</div>
       <h1 className="headline">Not every accent gets heard the same way.</h1>
       <p className="subhead">
@@ -279,7 +293,7 @@ function App() {
 
       {!loading && !error && data.length > 0 && (
         <>
-          <div className="finding-block">
+          <div className="finding-block" id="overview">
             <div className="finding-number">{gap}×</div>
             <div className="finding-label">
               gap in error rate between the best- and worst-performing accent groups
@@ -287,7 +301,7 @@ function App() {
             </div>
           </div>
 
-          <div className="chart-table-row">
+          <div className="chart-table-row" id="benchmark">
             <div className="chart-section">
               <div className="section-label">Average word error rate by accent group</div>
               <ResponsiveContainer width="100%" height={340}>
@@ -409,9 +423,9 @@ function App() {
             )}
           </div>
 
-          <IndiaMapSection />
+          <div id="map"><IndiaMapSection /></div>
 
-          <div className="test-section">
+          <div className="test-section" id="try-it">
             <div className="section-label">Try it yourself</div>
             <p className="mitigation-intro">
               Record or upload a short clip of yourself speaking, type exactly what you said,

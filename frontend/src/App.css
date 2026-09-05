@@ -383,3 +383,51 @@ body {
   color: #B4B8BF;
   line-height: 1.5;
 }
+
+.sticky-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(21, 24, 29, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #2A2E36;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  margin: -4rem -1.5rem 3rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.nav-brand {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: #EDEAE3;
+  font-size: 1rem;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-links button {
+  background: transparent;
+  border: none;
+  color: #B4B8BF;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.nav-links button:hover {
+  background: #1F2833;
+  color: #EDEAE3;
+}
+
+html {
+  scroll-behavior: smooth;
+}
