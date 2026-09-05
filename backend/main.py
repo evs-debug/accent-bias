@@ -37,6 +37,7 @@ client = SarvamAI(api_subscription_key=os.getenv('SARVAM_API_KEY'))
 async def transcribe_and_score(
     reference_text: str = Form(...),
     accent_group: str = Form(...),
+    native_state: str = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -62,6 +63,7 @@ async def transcribe_and_score(
     result = TranscriptionResult(
         filename=file.filename,
         accent_group=accent_group,
+        native_state=native_state,
         language_code=response.language_code,
         reference_text=reference_text,
         transcript=hypothesis,
@@ -96,6 +98,8 @@ async def get_all_results(db: Session = Depends(get_db)):
         for r in results
     ]
 
+BENCHMARK_LANGUAGES = ["Bengali", "Hindi", "Kannada", "Malayalam", "Nepali", "Odia", "Punjabi", "Tamil", "Telugu", "Urdu"]
+
 @app.get("/results/by-accent")
 async def get_wer_by_accent(db: Session = Depends(get_db)):
     results = (
@@ -104,6 +108,7 @@ async def get_wer_by_accent(db: Session = Depends(get_db)):
             func.avg(TranscriptionResult.wer).label("avg_wer"),
             func.count(TranscriptionResult.id).label("sample_count")
         )
+        .filter(TranscriptionResult.accent_group.in_(BENCHMARK_LANGUAGES))
         .group_by(TranscriptionResult.accent_group)
         .all()
     )
@@ -159,7 +164,7 @@ def correct_transcript(transcript, vocab, threshold=80):
 
 @app.get("/mitigation/summary")
 async def mitigation_summary(db: Session = Depends(get_db)):
-    rows = db.query(TranscriptionResult).all()
+    rows = db.query(TranscriptionResult).filter(TranscriptionResult.accent_group.in_(BENCHMARK_LANGUAGES)).all()
     vocab = build_vocab(db)
 
     improvements = []

@@ -21,6 +21,7 @@ def batch_upload(manifest_path):
         filename = row['filename']
         accent_group = row['accent_group']
         reference_text = row['reference_text']
+        native_state = row.get('native_state', '')
 
         try:
             with open(filename, 'rb') as audio_file:
@@ -28,7 +29,8 @@ def batch_upload(manifest_path):
                     API_URL,
                     data={
                         'reference_text': reference_text,
-                        'accent_group': accent_group
+                        'accent_group': accent_group,
+                        'native_state': native_state
                     },
                     files={'file': audio_file}
                 )

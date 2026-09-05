@@ -12,7 +12,7 @@ body {
 }
 
 .page {
-  max-width: 760px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 4rem 1.5rem 6rem;
 }
@@ -235,4 +235,65 @@ body {
   border: 1px solid #2A2E36;
   border-radius: 8px;
   padding: 1rem 1.25rem;
+}
+
+.record-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.record-btn {
+  background: #1A1D23;
+  border: 1px solid #2A2E36;
+  color: #EDEAE3;
+  border-radius: 6px;
+  padding: 0.6rem 1.25rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.record-btn.recording {
+  background: #D96C5F;
+  border-color: #D96C5F;
+  color: #15181D;
+}
+
+.file-selected-label {
+  color: #8A8F98;
+  font-size: 0.85rem;
+}
+
+.chart-table-row {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.chart-table-row .chart-section {
+  flex: 1.4;
+  min-width: 0;
+}
+
+.chart-table-row .table-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.chart-table-row .data-table {
+  font-size: 0.85rem;
+}
+
+.chart-table-row .data-table th,
+.chart-table-row .data-table td {
+  padding: 0.45rem 0.5rem;
+}
+
+@media (max-width: 800px) {
+  .chart-table-row {
+    flex-direction: column;
+  }
 }

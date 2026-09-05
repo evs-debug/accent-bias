@@ -148,6 +148,39 @@ function App() {
       .catch(() => setSamplesLoading(false))
   }
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      const chunks: Blob[] = []
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data)
+      }
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' })
+        const file = new File([blob], 'recording.webm', { type: 'audio/webm' })
+        setTestFile(file)
+        stream.getTracks().forEach((track) => track.stop())
+      }
+
+      recorder.start()
+      setMediaRecorder(recorder)
+      setRecordedChunks(chunks)
+      setIsRecording(true)
+    } catch (err) {
+      setTestError('Could not access microphone. Check browser permissions.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop()
+    }
+    setIsRecording(false)
+  }
+
   const handleTestSubmit = async () => {
     if (!testFile || !testReference.trim()) {
       setTestError('Please provide both an audio file and the reference text.')
@@ -210,57 +243,61 @@ function App() {
             </div>
           </div>
 
-          <div className="chart-section">
-            <div className="section-label">Average word error rate by accent group</div>
-            <ResponsiveContainer width="100%" height={340}>
-              <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2A2E36" vertical={false} />
-                <XAxis dataKey="accent_group" stroke="#8A8F98" tick={{ fill: '#B4B8BF', fontSize: 13 }} />
-                <YAxis
-                  stroke="#8A8F98"
-                  tick={{ fill: '#B4B8BF', fontSize: 13 }}
-                  tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
-                  domain={[0, 'dataMax + 0.03']}
-                />
-                <Tooltip
-                  formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, 'WER']}
-                  contentStyle={{ background: '#1D2128', border: '1px solid #2A2E36', borderRadius: '6px', color: '#EDEAE3' }}
-                />
-                <Bar
-                  dataKey="avg_wer"
-                  radius={[4, 4, 0, 0]}
-                >
-                  {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={getBarColor(entry.avg_wer)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <div className="chart-table-row">
+            <div className="chart-section">
+              <div className="section-label">Average word error rate by accent group</div>
+              <ResponsiveContainer width="100%" height={340}>
+                <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2E36" vertical={false} />
+                  <XAxis dataKey="accent_group" stroke="#8A8F98" tick={{ fill: '#B4B8BF', fontSize: 12 }} />
+                  <YAxis
+                    stroke="#8A8F98"
+                    tick={{ fill: '#B4B8BF', fontSize: 13 }}
+                    tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                    domain={[0, 'dataMax + 0.03']}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, 'WER']}
+                    contentStyle={{ background: '#1D2128', border: '1px solid #2A2E36', borderRadius: '6px', color: '#EDEAE3' }}
+                  />
+                  <Bar
+                    dataKey="avg_wer"
+                    radius={[4, 4, 0, 0]}
+                  >
+                    {data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={getBarColor(entry.avg_wer)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-          <div className="section-label">Full results — click a row to see individual samples</div>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Accent group</th>
-                <th>Avg WER</th>
-                <th>Samples</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((row) => (
-                <tr
-                  key={row.accent_group}
-                  onClick={() => handleSelectGroup(row.accent_group)}
-                  className={selectedGroup === row.accent_group ? 'row-selected' : 'row-clickable'}
-                >
-                  <td>{row.accent_group}</td>
-                  <td>{(row.avg_wer * 100).toFixed(1)}%</td>
-                  <td>{row.sample_count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            <div className="table-section">
+              <div className="section-label">Full results — click a row for samples</div>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Accent</th>
+                    <th>Avg WER</th>
+                    <th>N</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((row) => (
+                    <tr
+                      key={row.accent_group}
+                      onClick={() => handleSelectGroup(row.accent_group)}
+                      className={selectedGroup === row.accent_group ? 'row-selected' : 'row-clickable'}
+                    >
+                      <td>{row.accent_group}</td>
+                      <td>{(row.avg_wer * 100).toFixed(1)}%</td>
+                      <td>{row.sample_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           {selectedGroup && (
             <div className="drilldown">
@@ -336,7 +373,19 @@ function App() {
             </p>
 
             <div className="test-form">
-              <label className="test-field-label">Audio file</label>
+              <label className="test-field-label">Record your voice, or upload a file</label>
+              <div className="record-row">
+                <button
+                  type="button"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  className={isRecording ? 'record-btn recording' : 'record-btn'}
+                >
+                  {isRecording ? 'Stop recording' : 'Start recording'}
+                </button>
+                {testFile && !isRecording && (
+                  <span className="file-selected-label">{testFile.name}</span>
+                )}
+              </div>
               <input
                 type="file"
                 accept="audio/*"

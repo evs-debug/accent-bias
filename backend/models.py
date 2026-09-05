@@ -15,6 +15,7 @@ class TranscriptionResult(Base):
     filename = Column(String)
     accent_group = Column(String, index=True)
     language_code = Column(String)
+    native_state = Column(String, nullable=True)
     reference_text = Column(String)
     transcript = Column(String)
     wer = Column(Float)
