@@ -52,6 +52,24 @@ interface MitigationSummary {
 
 const API_BASE = 'http://localhost:8000'
 
+function normalizeWord(w: string): string {
+  return w.toLowerCase().replace(/[^a-z0-9']/g, '')
+}
+
+function diffWords(reference: string, transcript: string) {
+  const refWords = reference.split(/\s+/)
+  const transWords = transcript.split(/\s+/)
+  const refNorm = refWords.map(normalizeWord)
+  const transNorm = transWords.map(normalizeWord)
+
+  const matched = new Set(refNorm.filter((w) => transNorm.includes(w)))
+
+  return transWords.map((word) => ({
+    word,
+    isCorrect: matched.has(normalizeWord(word))
+  }))
+}
+
 function App() {
   const [data, setData] = useState<AccentResult[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,6 +81,17 @@ function App() {
 
   const [mitigation, setMitigation] = useState<MitigationSummary | null>(null)
   const [mitigationLoading, setMitigationLoading] = useState(true)
+
+  const [testFile, setTestFile] = useState<File | null>(null)
+  const [testReference, setTestReference] = useState('')
+  const [testAccentGroup, setTestAccentGroup] = useState('')
+  const [testResult, setTestResult] = useState<{ transcript: string; wer: number } | null>(null)
+  const [testLoading, setTestLoading] = useState(false)
+  const [testError, setTestError] = useState<string | null>(null)
+
+  const [isRecording, setIsRecording] = useState(false)
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
+  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([])
 
   useEffect(() => {
     fetch(`${API_BASE}/results/by-accent`)
@@ -117,6 +146,35 @@ function App() {
         setSamplesLoading(false)
       })
       .catch(() => setSamplesLoading(false))
+  }
+
+  const handleTestSubmit = async () => {
+    if (!testFile || !testReference.trim()) {
+      setTestError('Please provide both an audio file and the reference text.')
+      return
+    }
+    setTestLoading(true)
+    setTestError(null)
+    setTestResult(null)
+
+    const formData = new FormData()
+    formData.append('reference_text', testReference)
+    formData.append('accent_group', testAccentGroup.trim() || 'self_test')
+    formData.append('file', testFile)
+
+    try {
+      const res = await fetch(`${API_BASE}/transcribe`, {
+        method: 'POST',
+        body: formData
+      })
+      if (!res.ok) throw new Error('Transcription failed. Try a different audio file.')
+      const json = await res.json()
+      setTestResult({ transcript: json.transcript, wer: json.wer })
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setTestLoading(false)
+    }
   }
 
   const getBarColor = (wer: number) => {
@@ -268,6 +326,70 @@ function App() {
                 ))}
               </>
             )}
+          </div>
+
+          <div className="test-section">
+            <div className="section-label">Try it yourself</div>
+            <p className="mitigation-intro">
+              Record or upload a short clip of yourself speaking, type exactly what you said,
+              and see how the model transcribes it — live.
+            </p>
+
+            <div className="test-form">
+              <label className="test-field-label">Audio file</label>
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={(e) => setTestFile(e.target.files ? e.target.files[0] : null)}
+                className="test-input-file"
+              />
+
+              <label className="test-field-label">What did you say?</label>
+              <textarea
+                value={testReference}
+                onChange={(e) => setTestReference(e.target.value)}
+                placeholder="Type the exact words you said in the recording"
+                className="test-textarea"
+              />
+
+              <label className="test-field-label">Your accent / language background (optional)</label>
+              <input
+                type="text"
+                value={testAccentGroup}
+                onChange={(e) => setTestAccentGroup(e.target.value)}
+                placeholder="e.g. Tamil, Bengali, Nepali..."
+                className="test-input-text"
+              />
+
+              <button
+                onClick={handleTestSubmit}
+                disabled={testLoading}
+                className="test-submit-btn"
+              >
+                {testLoading ? 'Transcribing...' : 'Test it'}
+              </button>
+
+              {testError && <p className="status-error">{testError}</p>}
+
+              {testResult && (
+                <div className="test-result">
+                  <div className="sample-wer" style={{ color: getBarColor(testResult.wer) }}>
+                    {(testResult.wer * 100).toFixed(1)}% WER
+                  </div>
+                  <div className="sample-text">
+                    <span className="sample-label">Transcript:</span>{' '}
+                    {diffWords(testReference, testResult.transcript).map((w, i) => (
+                      <span
+                        key={i}
+                        style={{ color: w.isCorrect ? '#EDEAE3' : '#D96C5F', fontWeight: w.isCorrect ? 400 : 600 }}
+                      >
+                        {w.word}{' '}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}
